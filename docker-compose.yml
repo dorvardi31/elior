@@ -1,0 +1,49 @@
+version: '3'
+services:
+  app:
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile_backend  
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - mynetwork
+ 
+  db-init:
+    container_name: db-init
+    build:
+      context: ./db-init
+      dockerfile: Dockerfile  
+    depends_on:
+      - db
+    networks:
+      - mynetwork
+
+  eliorinterface:
+    container_name: interface
+    build:
+      context: ./eliorinterface
+      dockerfile: Dockerfile  
+    ports:
+      - "8080:8080"  
+    networks:
+      - mynetwork
+
+  db:
+    container_name: db
+    image: oracle/database:21.3.0-xe
+    ports:
+      - "1521:1521"
+      - "5500:5500"
+    environment:
+      ORACLE_PWD: Sep2023N
+      ORACLE_SID: XE
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+    driver: bridge

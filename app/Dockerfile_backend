@@ -1,0 +1,35 @@
+
+FROM python:3.8-slim
+
+
+WORKDIR /app
+
+
+RUN apt-get update && apt-get install -y openssh-server libaio1 wget unzip
+
+
+RUN wget https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-basiclite-linux.x64-21.12.0.0.0dbru.zip -O instantclient.zip && \
+    unzip instantclient.zip -d /opt/oracle && \
+    rm instantclient.zip && \
+    sh -c "echo /opt/oracle/instantclient_21_12 > /etc/ld.so.conf.d/oracle-instantclient.conf" && \
+    ldconfig
+
+RUN mkdir -p /root/.ssh
+COPY id_rsa.pub /root/.ssh/authorized_keys
+RUN chmod 600 /root/.ssh/ && \
+    chown root:root /root/.ssh/
+
+
+COPY requirements.txt ./
+
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ .
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+
+EXPOSE 5000 22
+
+CMD ["/start.sh"]
