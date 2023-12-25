@@ -34,17 +34,31 @@ def insert_into_assets(connection, asset_name, ip_addr, asset_type, registration
 def insert_into_concordance(connection, word, file_id, row_num, word_num):
     cursor = connection.cursor()
     try:
-        sql = """
-        INSERT INTO concordance (word, file_id, row_num, word_num)
-        VALUES (:1, :2, :3, :4)
+        # Check if the record already exists
+        check_sql = """
+        SELECT COUNT(*) FROM concordance
+        WHERE word = :1 AND file_id = :2 AND row_num = :3 AND word_num = :4
         """
-        cursor.execute(sql, (word, file_id, row_num, word_num))
-        connection.commit()
-        print("Data inserted into concordance table successfully.")
+        cursor.execute(check_sql, (word, file_id, row_num, word_num))
+        (count,) = cursor.fetchone()
+
+        # If count is 0, the record does not exist; proceed with insertion
+        if count == 0:
+            insert_sql = """
+            INSERT INTO concordance (word, file_id, row_num, word_num, groups)
+            VALUES (:1, :2, :3, :4, :5)
+            """
+            cursor.execute(insert_sql, (word, file_id, row_num, word_num, None))
+            connection.commit()
+            print("Data inserted into concordance table successfully.")
+        else:
+            print("Duplicate record found. Skipping insertion.")
+
     except cx_Oracle.Error as error:
-        print("Error inserting data into concordance table:", error)
+        print("Error in operation with concordance table:", error)
     finally:
         cursor.close()
+
 
 
 
@@ -118,12 +132,12 @@ def insert_into_log_files(connection, file_id, file_name, file_path):
 
 
 
-def insert_into_log_activity(connection, activity_id, file_id, event_id, event_time, asset_name, username, evidence):
+def insert_into_log_activity(connection, file_id, event_id, event_time, asset_name, username, evidence):
     cursor = connection.cursor()
     try:
-        sql = "INSERT INTO log_activity (activity_id, file_id, event_id, event_time, asset_name, username, evidence) " \
-              "VALUES (:1, :2, :3, :4, :5, :6, :7)"
-        cursor.execute(sql, (activity_id, file_id, event_id, event_time, asset_name, username, evidence))
+        sql = "INSERT INTO log_activity ( file_id, event_id, event_time, asset_name, username, evidence) " \
+              "VALUES (:1, :2,TO_DATE(:3,'DD-MON-YYYY HH24:MI:SS'), :4, :5, :6)"
+        cursor.execute(sql, ( file_id, event_id, event_time, asset_name, username, evidence))
         connection.commit()
         print("Data inserted into log_activity table successfully.")
     except cx_Oracle.Error as error:

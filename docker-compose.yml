@@ -9,9 +9,29 @@ services:
       - "5000:5000"
     depends_on:
       - db
+    hostname: apphost
     networks:
       - mynetwork
- 
+    volumes:
+      - shared-data:/opt/input
+      - shared-data:/opt/archive
+  
+  api:
+    container_name: api
+    build:
+      context: ./api  # The path to the directory containing your Dockerfile and source code
+    ports:
+      - "5001:5001"
+    networks:
+      - mynetwork
+    hostname: apihost
+    environment:
+      ORACLE_PWD: Sep2023N
+      ORACLE_SID: XE
+    volumes:
+      - shared-data:/opt/input
+      - shared-data:/opt/archive
+          
   db-init:
     container_name: db-init
     build:
@@ -29,8 +49,12 @@ services:
       dockerfile: Dockerfile  
     ports:
       - "8080:8080"  
+    hostname: eliorinterfacehost
     networks:
       - mynetwork
+    volumes:
+      - shared-data:/opt/input
+      - shared-data:/opt/archive
 
   db:
     container_name: db
@@ -43,7 +67,13 @@ services:
       ORACLE_SID: XE
     networks:
       - mynetwork
+    hostname: oracle_db
+    dns:
+      - Oracle_host
 
 networks:
   mynetwork:
     driver: bridge
+
+volumes:
+  shared-data:

@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
-import DashboardView from './components/Dashboard.vue' // Import the DashboardView component
+import DashboardView from './components/DashboardView.vue' // Import the DashboardView component
 import FileUpload from './components/FileUpload.vue'
 
 const routes = [

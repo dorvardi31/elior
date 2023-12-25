@@ -1,29 +1,21 @@
-
 <template>
   <div id="app">
-    <router-view /> <!-- Dynamic rendering based on routes -->
+    <data-table-view></data-table-view>
   </div>
 </template>
 
 <script>
+import DataTableView from './components/DataTableView.vue';
+
+
 export default {
   name: 'App',
-}
+  components: {
+    DataTableView
+  }
+};
 </script>
 
 <style>
-/* Global styles go here */
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #f8f8f8;
-}
-#app {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-}
+/* Global styles */
 </style>

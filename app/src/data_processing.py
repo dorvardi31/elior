@@ -13,11 +13,10 @@ import shutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from flask_cors import CORS
-from flask import Flask
+from flask import Flask, jsonify, request
 import logging
 import sys
 from datetime import datetime
-
 
 app = Flask(__name__)
 CORS(app)
@@ -32,6 +31,8 @@ archive_directory = '/opt/archive'
 
 results_json_file = './json/results.json'
 result_json_directory ='./json/'
+
+    
 class MyHandler(FileSystemEventHandler):
     def on_created(self, event):
         logger.info(f"New file detected: {event.src_path}")
@@ -136,10 +137,11 @@ def process_file(file_path, file_id, file_name):
                 print(f"Inserting into assets: Asset Name: {asset_name}, IP Address: {ip_addr}, Asset Type: {asset_type}, Registration Date: {registration_date_formatted}")
 
        
-                database_connection.insert_into_assets(connection, params.get('asset_name'), params.get('ip_addr'), params.get('asset_type'), params.get('registration_date_formatted'))
+                database_connection.insert_into_assets(connection, params.get('asset_name'), params.get('ip_addr'), params.get('asset_type'), registration_date_formatted)
                 database_connection.insert_into_users(connection,params.get('asset_name'))
                 database_connection.insert_into_log_files(connection,file_id,file_name,file_path)
                 database_connection.insert_into_events(connection,event_id,params.get('event_type'),params.get('description'),params.get('asset_name'),params.get('asset_name'))
+                database_connection.insert_into_log_activity(connection,file_id,event_id,registration_date_formatted,params.get('asset_name'),params.get('asset_name'),params.get('asset_name'))
                 for word, occurrences in concordance_data.items():
                     for occurrence in occurrences:
                         row_num, word_num = occurrence
@@ -161,6 +163,7 @@ def process_file(file_path, file_id, file_name):
         return json.dumps([])
 
 if __name__ == "__main__":
+    
     processed_files = []  
 
     try:
