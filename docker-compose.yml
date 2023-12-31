@@ -1,0 +1,81 @@
+version: '3'
+services:
+  app:
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile_backend  
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    hostname: apphost
+    networks:
+      - mynetwork
+    volumes:
+      - shared-data:/opt/input
+      - shared-data:/opt/archive
+  
+  api:
+    container_name: api
+    build:
+      context: ./api  # The path to the directory containing your Dockerfile and source code
+    ports:
+      - "5001:5001"
+    networks:
+      - mynetwork
+    hostname: apihost
+    environment:
+      ORACLE_PWD: Sep2023N
+      ORACLE_SID: XE
+    volumes:
+      - shared-data:/opt/input
+      - shared-data:/opt/archive
+          
+  db-init:
+    container_name: db-init
+    build:
+      context: ./db-init
+      dockerfile: Dockerfile  
+    depends_on:
+      - db
+    networks:
+      - mynetwork
+
+  eliorinterface:
+    container_name: interface
+    build:
+      context: ./eliorinterface
+      dockerfile: Dockerfile  
+    ports:
+      - "8080:8080"  
+    hostname: eliorinterfacehost
+    networks:
+      - mynetwork
+    volumes:
+      - shared-data:/opt/input
+      - shared-data:/opt/archive
+      - ./eliorinterface:/usr/src/app
+      - /usr/src/app/node_modules
+
+  db:
+    container_name: db
+    image: oracle/database:21.3.0-xe
+    ports:
+      - "1521:1521"
+      - "5500:5500"
+    environment:
+      ORACLE_PWD: Sep2023N
+      ORACLE_SID: XE
+    networks:
+      - mynetwork
+    hostname: oracle_db
+    dns:
+      - Oracle_host
+
+networks:
+  mynetwork:
+    driver: bridge
+
+volumes:
+  shared-data:
