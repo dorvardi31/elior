@@ -55,6 +55,8 @@ services:
     volumes:
       - shared-data:/opt/input
       - shared-data:/opt/archive
+      - ./eliorinterface:/usr/src/app
+      - /usr/src/app/node_modules
 
   db:
     container_name: db

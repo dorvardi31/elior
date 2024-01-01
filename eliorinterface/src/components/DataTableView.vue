@@ -23,7 +23,10 @@
         <input class="search-input" v-model="searchParams.USER_REGISTRATION_DATE" placeholder="Search by User Registration Date">
         <button class="search-button" @click="fetchData(true)">Search</button>
       </div>
-  
+      <div class="search-section">
+        <input class="search-input" v-model="sentenceSearch" placeholder="Search by Sentence">
+        <button class="search-button" @click="searchBySentence">Search Sentence</button>
+      </div>
       <!-- Table with a button to view file content -->
       <div class="table-container">
         <table>
@@ -50,7 +53,7 @@
           </thead>
           <!-- Table Body -->
           <tbody>
-            <tr v-for="record in records" :key="record.ASSET_NAME">
+            <tr v-for="record in records" :key="record.id">
               <td>{{ record.CONCORDANCE_WORD }}</td>
               <td>{{ record.CONCORDANCE_ROW_NUM }}</td>
               <td>{{ record.CONCORDANCE_WORD_NUM }}</td>
@@ -126,6 +129,7 @@
         currentPage: 1,
         selectedFileContent: '',
         showModal: false,
+        sentenceSearch: '',
       };
     },
     methods: {
@@ -146,6 +150,18 @@
           })
           .catch(error => {
             console.error('Error fetching data:', error);
+            this.loading = false;
+          });
+      },
+      searchBySentence() {
+        this.loading = true;
+        axios.post('http://127.0.0.1:5001/api/search', { query: this.sentenceSearch })
+          .then(response => {
+            this.records = response.data;  // Update the table with the new data
+            this.loading = false;
+          })
+          .catch(error => {
+            console.error('Error searching by sentence:', error);
             this.loading = false;
           });
       },
@@ -184,13 +200,12 @@
   <style>
     /* Base Container */
     .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-      font-family: 'Work Sans', sans-serif;
-      background-color: #fff;
+      max-width: 1280px;
+      margin: 2rem auto;
+      padding: 2rem;
+      font-family: 'Inter', sans-serif;
+      background-color: #FAFAFA;
       color: #333;
-      line-height: 1.6;
     }
 
     /* File Upload Section */
@@ -231,7 +246,7 @@
       padding: 15px 30px;
       border: none;
       border-radius: 8px;
-      background-color: #4CAF50;
+      background-color: #00BCD4; /* Cyan color */
       color: white;
       cursor: pointer;
       font-weight: 600;
@@ -240,7 +255,7 @@
     }
 
     .search-button:hover {
-      background-color: #43a047;
+      background-color: #00ACC1;
       box-shadow: 2px 2px 4px #c4c4c4;
     }
 
@@ -262,7 +277,7 @@
     }
 
     th {
-      background-color: #4CAF50;
+      background-color: #00BCD4;
       color: white;
       font-weight: 600;
     }
@@ -288,14 +303,14 @@
       margin: 0 10px;
       border: none;
       border-radius: 8px;
-      background-color: #4CAF50;
+      background-color: #00BCD4;
       color: white;
       cursor: pointer;
       transition: all 0.3s;
     }
 
     .pagination button:hover {
-      background-color: #43a047;
+      background-color: #00ACC1;
     }
 
     .pagination span {

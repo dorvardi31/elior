@@ -1,23 +1,14 @@
-// src/router/index.js
-
-import Vue from 'vue';
-import VueRouter from 'vue-router';
-import Home from '../views/HomePage.vue';
-
-Vue.use(VueRouter);
+import { createRouter, createWebHashHistory } from 'vue-router';
+import DataTableView from '@/components/DataTableView.vue';
+import WordGroupAssignment from '@/components/WordGroupAssignment.vue';
 
 const routes = [
-  {
-    path: '/',
-    name: 'HomePage',
-    component: HomePage,
-  },
-  // other routes
+  { path: '/', component: DataTableView },
+  { path: '/word-group-assignment', component: WordGroupAssignment },
 ];
 
-const router = new VueRouter({
-  mode: 'history',
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHashHistory(),
   routes,
 });
 

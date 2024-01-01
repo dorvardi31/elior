@@ -12,7 +12,7 @@ def extract_concordance_data(text):
         words = line.split()
         for word_num, word in enumerate(words, start=1):
             word = re.sub(r'[^\w\s]', '', word).lower()  # Removing punctuation and converting to lowercase
-            if word and word not in stop_words:
+            if word:
                 if word not in concordance:
                     concordance[word] = []
                 concordance[word].append((row_num, word_num))

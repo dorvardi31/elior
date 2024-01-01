@@ -6,6 +6,8 @@ import create_db_connection
 import logging
 import sys
 import os
+import search
+from search import find_sentence
 from datetime import datetime
 app = Flask(__name__)
 CORS(app)
@@ -17,6 +19,35 @@ input_directory = '/opt/input'
 
 api_endpoint = '/api/upload'
 
+@app.route('/api/words', methods=['GET'])
+def get_distinct_words():
+    try:
+        with create_db_connection.create_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("SELECT DISTINCT concordance_word FROM combined_data_view")
+            words = [row[0] for row in cursor.fetchall()]
+            return jsonify(words), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/search', methods=['POST'])
+def search():
+    try:
+        data = request.json
+        search_sentence = data.get('query')  # Extracting the sentence from the request
+        if not isinstance(search_sentence, str):
+            return jsonify({'error': 'Invalid input type'}), 400
+
+        # Process the search_sentence to find matches
+        # Ensure any dictionary/set operations are using hashable types
+
+        # Assuming find_sentence function returns a list of dictionaries
+        results = find_sentence(search_sentence)
+        return jsonify(results), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 @app.route('/api/file_content', methods=['GET'])
 def file_content():
     try:
@@ -126,12 +157,12 @@ def query_view():
 
 
 
-@app.route(assign_groups_endpoint, methods=['POST'])
+@app.route('/api/assign_group', methods=['POST'])
 def assign_groups():
     try:
         data = request.json
-        words = data.get('words', [])
-        new_group = data.get('new_group', '')
+        words = data.get('words', [])  # List of words
+        new_group = data.get('new_group', '')  # Group name
 
         if not words or not new_group:
             return jsonify({'message': 'Invalid input data'}), 400
@@ -141,11 +172,13 @@ def assign_groups():
             cursor = connection.cursor()
             try:
                 for word in words:
+                    # Assuming 'groups' is the column name where group names are stored
                     sql = "UPDATE concordance SET groups = :new_group WHERE word = :word"
                     cursor.execute(sql, {'new_group': new_group, 'word': word})
                 connection.commit()
                 return jsonify({'message': 'Groups assigned successfully'}), 200
             except Exception as e:
+                connection.rollback()  # Rollback in case of error
                 return jsonify({'error': str(e)}), 500
             finally:
                 cursor.close()

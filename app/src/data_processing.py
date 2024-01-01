@@ -88,7 +88,7 @@ def extract_event_data(text, event_id):
 
 def extract_event_blocks(text):
     try:
-        event_blocks = re.split(r'Event End', text)
+        event_blocks = re.split(r'This event is generated', text)
         return [block.strip() for block in event_blocks if block.strip()]
     except Exception as e:
         logger.error(f"Error extracting event blocks: {e}", exc_info=True)
