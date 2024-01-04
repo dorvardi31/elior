@@ -58,6 +58,11 @@ event_data_patterns_4624 = {
     'New Logon': r'New Logon:\n\s+Security ID:\s+([^\n]+)\n\s+Account Name:\s+([^\n]+)\n\s+Account Domain:\s+([^\n]+)\n\s+Logon ID:\s+([^\n]+)\n\s+Linked Logon ID:\s+([^\n]+)\n\s+Network Account Name:\s+([^\n]+)\n\s+Network Account Domain:\s+([^\n]+)\n\s+Logon GUID:\s+([^\n]+)',
 }
 
+event_data_pattern = {
+    '4624': event_data_patterns_4624,
+
+}
+
 
 event_id_to_preparation = {
     '4624': prepare_data_for_event_4624,

@@ -66,28 +66,21 @@ def file_content():
         with open(full_path, 'r') as file:
             lines = file.readlines()
 
+        if row_num >= len(lines):
+            return jsonify({'error': 'Row number out of file range'}), 400
+
+        # Extract the relevant lines
         start_line = max(0, row_num - 1)
         end_line = min(len(lines), row_num + 2)
         relevant_lines = lines[start_line:end_line]
 
-        # Determine the target line index in the relevant_lines
-        target_line_index = 0 if row_num == 0 else 1
+        # Find and highlight the word in the target line
+        target_line_words = relevant_lines[1 if row_num > 0 else 0].split()
+        if word_num >= len(target_line_words):
+            return jsonify({'error': 'Word number out of line range'}), 400
 
-        # Adjust word position for the extracted content
-        words = relevant_lines[target_line_index].split()
-
-        # If the word is on the first line of the file, no adjustment is needed
-        if row_num == 0:
-            word_num_adjusted = word_num
-        else:
-            word_num_adjusted = word_num - len(relevant_lines[0].split())
-
-        # Highlight the specific word
-        if 0 <= word_num_adjusted < len(words):
-            words[word_num_adjusted] = f"<mark>{words[word_num_adjusted]}</mark>"
-            relevant_lines[target_line_index] = " ".join(words)
-
-
+        target_line_words[word_num] = f"<mark>{target_line_words[word_num]}</mark>"
+        relevant_lines[1 if row_num > 0 else 0] = ' '.join(target_line_words)
 
         return jsonify({'content': "\n".join(relevant_lines)}), 200
     except Exception as e:
@@ -133,6 +126,8 @@ def query_view():
 
             for key, value in request.args.items():
                 if key not in ['page', 'limit'] and value:  # Check if value is not empty
+                    if key == 'CONCORDANCE_WORD' :
+                        value=value.lower()
                     param_name = f"param_{key}"
                     sql += f" AND {key} = :{param_name}"
                     params[param_name] = value
@@ -154,6 +149,7 @@ def query_view():
         return jsonify({'error': str(e)}), 500
     except Exception as general_error:
         return jsonify({'error': str(general_error)}), 500
+
 
 
 

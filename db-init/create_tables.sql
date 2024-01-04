@@ -84,15 +84,15 @@ SELECT
     c.word_num AS concordance_word_num,
     c.groups AS concordance_groups
 FROM
-    assets a
+    log_files lf
 LEFT JOIN
-    users u ON a.asset_name = u.username
+    log_activity la ON lf.file_id = la.file_id
 LEFT JOIN
-    log_activity la ON a.asset_name = la.asset_name
+    users u ON la.asset_name = u.username
 LEFT JOIN
     events e ON la.event_id = e.event_id
 LEFT JOIN
-    log_files lf ON la.file_id = lf.file_id
+    assets a ON la.asset_name = a.asset_name    
 LEFT JOIN
     concordance c ON lf.file_id = c.file_id;
 

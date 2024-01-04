@@ -1,7 +1,7 @@
 <template>
   <div class="file-upload-wrapper">
     <input type="file" ref="fileInput" @change="handleFileUpload" />
-    <button @click="uploadFile">Upload File</button>
+    <button @click="uploadFile">Upload file</button>
     <div v-if="uploadStatus" class="upload-status">{{ uploadStatus }}</div>
   </div>
 </template>
@@ -30,7 +30,7 @@ export default {
       const formData = new FormData();
       formData.append('file', this.selectedFile);
 
-      axios.post('http://localhost:5001/api/upload', formData, { 
+      axios.post('http://apihost:5001/api/upload', formData, { 
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       .then(response => {

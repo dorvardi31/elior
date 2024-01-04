@@ -1,12 +1,10 @@
 import datetime
 import os
 import json
-import re
 import event_patterns
 import database_connection
 import businesslogic
 import cx_Oracle
-import hashlib
 import time
 import datetime
 import shutil
@@ -20,7 +18,6 @@ from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
-
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -39,109 +36,92 @@ class MyHandler(FileSystemEventHandler):
         if event.is_directory:
             logger.info(f"Directory created: {event.src_path}, ignoring...")
             return
-        file_path = event.src_path
+        original_file_path = event.src_path
 
         try:
-            with open(file_path, 'r') as file:
+            # Delay to allow file write completion
+            time.sleep(1)
+
+            with open(original_file_path, 'r') as file:
                 file_content = file.read()
-                file_id = generate_file_id(file_content)
-                logger.info(f"Generated file ID: {file_id} for file: {file_path}")
+                file_id = businesslogic.generate_file_id(file_content)
+                logger.info(f"Generated file ID: {file_id} for file: {original_file_path}")
 
-            archived_file_name = f'{file_id}.txt'
-            archived_file_path = os.path.join(archive_directory, archived_file_name)
-            shutil.move(file_path, archived_file_path)
-            logger.info(f"Moved {file_path} to {archived_file_path}")
+            # Rename the file with the new file ID
+            new_file_name = f'{file_id}.txt'
+            new_file_path = os.path.join(os.path.dirname(original_file_path), new_file_name)
+            os.rename(original_file_path, new_file_path)
+            logger.info(f"Renamed {original_file_path} to {new_file_path}")
+            logger.info(f"Current contents of the archive directory: {os.listdir(archive_directory)}")
+            # Check if the file with the new ID already exists in the archive
+            archived_file_path = os.path.join(archive_directory, new_file_name)
+            print(f"Checking if file exists: {archived_file_path}")
+            if os.path.isfile(archived_file_path):
+                logger.info(f"File with ID {file_id} already exists in archive. Deleting file {new_file_path}.")
+                os.remove(new_file_path)
+                return
+            
+               
+            shutil.move(new_file_path, archive_directory)
+            logger.info(f"Moved {new_file_path} to {archive_directory}")
 
-            result = process_file(archived_file_path, file_id, archived_file_name)
-            processed_files.append({'file_id': file_id, 'file_name': archived_file_name,'file_path': archived_file_path, 'result': json.loads(result)})
+            result = process_file(archived_file_path, file_id, new_file_name)
+            processed_files.append({'file_id': file_id, 'file_name': new_file_name, 'file_path': archived_file_path, 'result': json.loads(result)})
 
             with open(results_json_file, 'w') as json_file:
                 json.dump(processed_files, json_file, indent=4)
-                logger.info(f"Updated results JSON file with data from {archived_file_name}")
+                logger.info(f"Updated results JSON file with data from {new_file_name}")
 
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}", exc_info=True)
+            logger.error(f"Error processing file {original_file_path}: {e}", exc_info=True)
 
-def generate_file_id(file_content):
-    try:
-        file_hash = hashlib.sha256(file_content.encode()).hexdigest()
-        return file_hash
-    except Exception as e:
-        logger.error(f"Error generating file ID: {e}", exc_info=True)
-        return None
-
-def extract_event_data(text, event_id):
-    event_data = {}
-    try:
-        patterns_to_use = event_patterns.event_data_patterns_4624 if event_id == "4624" else {}
-
-        for key, pattern in patterns_to_use.items():
-            match = re.search(pattern, text)
-            if match:
-                event_data[key] = match.group(1).strip()
-
-        return event_data
-
-    except Exception as e:
-        logger.error(f"Error extracting event data: {e}", exc_info=True)
-        return {}
-
-def extract_event_blocks(text):
-    try:
-        event_blocks = re.split(r'This event is generated', text)
-        return [block.strip() for block in event_blocks if block.strip()]
-    except Exception as e:
-        logger.error(f"Error extracting event blocks: {e}", exc_info=True)
-        return []
 
 def process_file(file_path, file_id, file_name):
+    processed_files=[]
     try:
         with open(file_path, 'r') as file:
             text = file.read()
 
-        event_blocks = extract_event_blocks(text)
+        event_blocks = businesslogic.extract_event_blocks(text)
         results = []
 
-        connection = None
-        try: 
-            dsnStr = cx_Oracle.makedsn("db", database_connection.PORT, service_name=database_connection.SERVICE_NAME)
-            connection = cx_Oracle.connect(user=database_connection.USERNAME, password=database_connection.PASSWORD, dsn=dsnStr)
+        with database_connection.get_connection() as connection:
             logger.info("Connected to Oracle Database")
 
 
             for block in event_blocks:
                 system_data = businesslogic.extract_system_info(block)
                 event_id = system_data.get('EventID')
-                event_data = extract_event_data(block, event_id) if event_id else {}
+                event_data = businesslogic.extract_event_data(block, event_id) if event_id else {}
                 concordance_data = businesslogic.extract_concordance_data(block)
                 results.append({'System': system_data, 'EventData': event_data, 'Concordance': concordance_data, 'FileID': file_id, 'FileName': file_name})
 
+                params=None
                 if event_id in event_patterns.event_id_to_preparation:
                     params = event_patterns.event_id_to_preparation[event_id](event_data, system_data, file_id, file_name)
-    
-                asset_name = event_data.get('LogonAccountName')
-                ip_addr = event_data.get('Source Network Address')
-                asset_type = event_data.get('Logon Type')
-                registration_date_str = system_data.get('DateAndTime')
-                try:
-                    registration_date_obj = datetime.strptime(registration_date_str, '%m/%d/%Y %I:%M:%S %p')
-                    registration_date_formatted = registration_date_obj.strftime('%d-%b-%Y %H:%M:%S')
+                    asset_name = event_data.get('LogonAccountName')
+                    ip_addr = event_data.get('Source Network Address')
+                    asset_type = event_data.get('Logon Type')
+                    registration_date_str = system_data.get('DateAndTime')
+                    try:
+                        registration_date_obj = datetime.strptime(registration_date_str, '%m/%d/%Y %I:%M:%S %p')
+                        registration_date_formatted = registration_date_obj.strftime('%d-%b-%Y %H:%M:%S')
 
-                    
-                except ValueError as e:
-                    logger.error(f"Error parsing date: {e}")
-                    registration_date_formatted = None  
+                        
+                    except ValueError as e:
+                        logger.error(f"Error parsing date: {e}")
+                        registration_date_formatted = None  
 
 
      
-                print(f"Inserting into assets: Asset Name: {asset_name}, IP Address: {ip_addr}, Asset Type: {asset_type}, Registration Date: {registration_date_formatted}")
-
-       
-                database_connection.insert_into_assets(connection, params.get('asset_name'), params.get('ip_addr'), params.get('asset_type'), registration_date_formatted)
-                database_connection.insert_into_users(connection,params.get('asset_name'))
-                database_connection.insert_into_log_files(connection,file_id,file_name,file_path)
-                database_connection.insert_into_events(connection,event_id,params.get('event_type'),params.get('description'),params.get('asset_name'),params.get('asset_name'))
-                database_connection.insert_into_log_activity(connection,file_id,event_id,registration_date_formatted,params.get('asset_name'),params.get('asset_name'),params.get('asset_name'))
+                if params:
+                    database_connection.insert_into_assets(connection, params.get('asset_name'), params.get('ip_addr'), params.get('asset_type'), registration_date_formatted)
+                    database_connection.insert_into_users(connection,params.get('asset_name'))   
+                    database_connection.insert_into_events(connection,event_id,params.get('event_type'),params.get('description'),params.get('asset_name'),params.get('asset_name'))
+                    database_connection.insert_into_log_files(connection,file_id,file_name,file_path)
+                    database_connection.insert_into_log_activity(connection,file_id,event_id,registration_date_formatted,params.get('asset_name'),params.get('asset_name'),params.get('asset_name'))
+                else:
+                    database_connection.insert_into_log_files(connection,file_id,file_name,file_path)
                 for word, occurrences in concordance_data.items():
                     for occurrence in occurrences:
                         row_num, word_num = occurrence
@@ -150,14 +130,13 @@ def process_file(file_path, file_id, file_name):
 
                         database_connection.insert_into_concordance(connection, word, file_id, row_num, word_num)
 
-
-        finally:
-            if connection:
-                connection.close()
-                logger.info("Database connection closed")
-
+        logger.info("Database connection released back to pool")
+        
         return json.dumps(results, indent=4)
 
+    except cx_Oracle.Error as e:
+        logger.error("Database error: %s", e)
+        raise
     except Exception as e:
         logger.error(f"Error processing file {file_path}: {e}", exc_info=True)
         return json.dumps([])

@@ -247,7 +247,7 @@
       border: none;
       border-radius: 8px;
       background-color: #00BCD4; /* Cyan color */
-      color: white;
+      color: rgb(80, 131, 212);
       cursor: pointer;
       font-weight: 600;
       transition: background-color 0.3s;

@@ -1,13 +1,59 @@
 import cx_Oracle
-
+import logging
+import time
 USERNAME = 'SYSTEM'
 PASSWORD = 'Sep2023N'   
 HOST = '127.0.0.1'
 PORT = '1521'
 SERVICE_NAME = 'XEPDB1'
 CONNECTION_STRING = f'{USERNAME}/{PASSWORD}@{HOST}:{PORT}/{SERVICE_NAME}'
+POOL_MIN = 2
+POOL_MAX = 10
+POOL_INCREMENT = 1
+POOL_TIMEOUT = 300
 
+logger = logging.getLogger(__name__)
+dsnStr = cx_Oracle.makedsn("db", PORT, service_name=SERVICE_NAME)
+max_retries = 5
+retry_delay = 300  
 
+def initialize_connection_pool():
+    for attempt in range(max_retries):
+        try:
+            connection_pool = cx_Oracle.SessionPool(
+                user=USERNAME,
+                password=PASSWORD,
+                dsn=dsnStr,
+                min=POOL_MIN,
+                max=POOL_MAX,
+                increment=POOL_INCREMENT,
+                timeout=POOL_TIMEOUT,
+                getmode=cx_Oracle.SPOOL_ATTRVAL_WAIT
+            )
+            return connection_pool
+        except cx_Oracle.DatabaseError as e:
+            if attempt < max_retries - 1:
+                logger.error("Error initializing connection pool, retrying...: %s", e)
+                time.sleep(retry_delay)
+            else:
+                logger.error("Error initializing connection pool: %s", e)
+                raise
+
+def get_connection():
+
+    try:
+        return connection_pool.acquire()
+    except cx_Oracle.Error as e:
+        logger.error("Error acquiring connection from pool: %s", e)
+        raise
+
+def release_connection(connection):
+    try:
+        connection_pool.release(connection)
+    except cx_Oracle.Error as e:
+        logger.error("Error releasing connection back to pool: %s", e)
+        raise
+connection_pool = initialize_connection_pool()
 
 def insert_into_assets(connection, asset_name, ip_addr, asset_type, registration_date):
     cursor = connection.cursor()

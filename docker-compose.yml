@@ -14,7 +14,7 @@ services:
       - mynetwork
     volumes:
       - shared-data:/opt/input
-      - shared-data:/opt/archive
+      - shared-arc:/opt/archive
   
   api:
     container_name: api
@@ -30,7 +30,7 @@ services:
       ORACLE_SID: XE
     volumes:
       - shared-data:/opt/input
-      - shared-data:/opt/archive
+      - shared-arc:/opt/archive
           
   db-init:
     container_name: db-init
@@ -53,8 +53,6 @@ services:
     networks:
       - mynetwork
     volumes:
-      - shared-data:/opt/input
-      - shared-data:/opt/archive
       - ./eliorinterface:/usr/src/app
       - /usr/src/app/node_modules
 
@@ -79,3 +77,4 @@ networks:
 
 volumes:
   shared-data:
+  shared-arc:
